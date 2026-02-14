@@ -1,0 +1,56 @@
+# Rust
+/target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Editor backups
+*.bak
+*.tmp
+.vim/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.o
+*.so
+*.dylib
+*.a
+
+# Profiling
+perf.data
+perf.data.old
+flamegraph.svg
+
+# Test coverage
+coverage/
+*.profraw
+*.profdata
+
+# Benchmark results
+target/criterion/
+
+# Local environment
+.env
+.env.local
+*.local
+
+# Misc
+*.log
+debug/
