@@ -203,23 +203,24 @@ impl Default for PdfExtractor {
     }
 }
 
-/// Extracts text from a parsed PDF document.
+/// Extracts text from a parsed PDF document using lopdf's page API.
 fn extract_text_from_document(document: &lopdf::Document) -> Result<String> {
     let mut text = String::new();
+    let page_ids = document.get_pages();
 
-    let pages_id = document
-        .get_pages_mut()
-        .iter()
-        .next()
-        .ok_or_else(|| SensCoreError::PdfError("No pages found in PDF".to_string()))?
-        .0
-        .clone();
+    if page_ids.is_empty() {
+        return Err(SensCoreError::PdfError(
+            "No pages found in PDF".to_string(),
+        ));
+    }
 
-    if let Ok(pages) = document.get_pages_mut().iter_mut(pages_id) {
-        for page_id in pages.iter.clone() {
-            if let Ok(page) = document.get_mut(page_id) {
-                extract_text_from_page(page, &mut text);
-            }
+    // Iterate pages in page-number order
+    let mut sorted_pages: Vec<_> = page_ids.iter().collect();
+    sorted_pages.sort_by_key(|(page_num, _)| *page_num);
+
+    for (_page_num, &object_id) in &sorted_pages {
+        if let Ok(content_bytes) = document.get_page_content(object_id) {
+            extract_text_from_content(&content_bytes, &mut text);
         }
     }
 
@@ -235,29 +236,27 @@ fn extract_text_from_document(document: &lopdf::Document) -> Result<String> {
 /// Extracts pages from a parsed PDF document.
 fn extract_pages_from_document(document: &lopdf::Document) -> Result<Vec<Page>> {
     let mut pages = Vec::new();
+    let page_ids = document.get_pages();
 
-    let pages_id = document
-        .get_pages_mut()
-        .iter()
-        .next()
-        .ok_or_else(|| SensCoreError::PdfError("No pages found in PDF".to_string()))?
-        .0
-        .clone();
+    if page_ids.is_empty() {
+        return Err(SensCoreError::PdfError("No pages extracted".to_string()));
+    }
 
-    if let Ok(pages_ref) = document.get_pages_mut().iter_mut(pages_id) {
-        for (page_idx, page_id) in pages_ref.iter.clone().iter().enumerate() {
-            let mut page_text = String::new();
-            if let Ok(page) = document.get_mut(page_id) {
-                extract_text_from_page(page, &mut page_text);
-            }
+    let mut sorted_pages: Vec<_> = page_ids.iter().collect();
+    sorted_pages.sort_by_key(|(page_num, _)| *page_num);
 
-            let word_count = page_text.split_whitespace().count();
-            pages.push(Page {
-                page_number: page_idx + 1,
-                text: page_text,
-                word_count,
-            });
+    for (&page_num, &object_id) in &sorted_pages {
+        let mut page_text = String::new();
+        if let Ok(content_bytes) = document.get_page_content(object_id) {
+            extract_text_from_content(&content_bytes, &mut page_text);
         }
+
+        let word_count = page_text.split_whitespace().count();
+        pages.push(Page {
+            page_number: page_num as usize,
+            text: page_text,
+            word_count,
+        });
     }
 
     if pages.is_empty() {
@@ -267,28 +266,10 @@ fn extract_pages_from_document(document: &lopdf::Document) -> Result<Vec<Page>> 
     Ok(pages)
 }
 
-/// Extracts text from a single PDF page object.
-fn extract_text_from_page(page: &mut lopdf::Object, text: &mut String) {
-    if let Ok(content_data) = page.as_dict_mut() {
-        if let Ok(content) = content_data.get_mut(b"Contents") {
-            if let Ok(content_id) = content.as_reference() {
-                if let Ok(stream) = content_id.get_object_mut() {
-                    if let Ok(stream_obj) = stream.as_stream_mut() {
-                        if let Ok(content) = stream_obj.decode_content() {
-                            extract_text_from_content(&content, text);
-                        }
-                    }
-                }
-            } else if let Ok(stream) = content.as_stream_mut() {
-                if let Ok(content) = stream.decode_content() {
-                    extract_text_from_content(&content, text);
-                }
-            }
-        }
-    }
-}
-
-/// Extracts text from PDF content stream.
+/// Extracts text from PDF content stream bytes.
+///
+/// Parses a raw PDF content stream to find text objects (BT...ET blocks)
+/// and extracts text strings enclosed in parentheses.
 fn extract_text_from_content(content: &[u8], text: &mut String) {
     let mut in_text_object = false;
     let mut i = 0;

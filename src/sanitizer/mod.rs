@@ -183,12 +183,12 @@ impl Sanitizer {
         matches.sort_by_key(|m| m.0);
         matches.dedup_by_key(|m| (m.0, m.1));
 
-        let mut offset = 0;
+        let mut offset: isize = 0;
         let mut replacement_counts: HashMap<String, usize> = HashMap::new();
 
         for (start, end, original, category) in matches {
-            let adjusted_start = start + offset;
-            let adjusted_end = end + offset;
+            let adjusted_start = (start as isize + offset) as usize;
+            let adjusted_end = (end as isize + offset) as usize;
 
             let count = replacement_counts.entry(category.clone()).or_insert(0);
             *count += 1;
