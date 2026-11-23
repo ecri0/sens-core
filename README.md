@@ -1,5 +1,13 @@
 # sens-core: High-Performance Document Processing for AI Pipelines
 
+> [!WARNING]
+> **This repository is an old snapshot (February 2026) of `sens-core` 0.5.0. It is not used by Sens today and is not published on crates.io.**
+>
+> - USIDs have not been shown to be model-independent. The `sens://v1/...` identifiers below are a feature number and a content hash.
+> - The "15×" performance figure has no published measurement.
+>
+> For current information, see [sens-thread.io](https://sens-thread.io). Contact: info@sens-thread.io
+
 [![Crates.io](https://img.shields.io/crates/v/sens-core.svg)](https://crates.io/crates/sens-core)
 [![Documentation](https://docs.rs/sens-core/badge.svg)](https://docs.rs/sens-core)
 [![License](https://img.shields.io/crates/l/sens-core.svg)](LICENSE)
